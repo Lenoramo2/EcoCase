@@ -1,0 +1,58 @@
+import requests
+import os
+
+# Shopify API Credentials
+SHOPIFY_API_KEY = os.getenv("SHOPIFY_API_KEY")
+SHOPIFY_PASSWORD = os.getenv("SHOPIFY_PASSWORD")
+SHOPIFY_STORE_NAME = os.getenv("SHOPIFY_STORE_NAME")
+
+# Supplier API Key
+SUPPLIER_API_KEY = os.getenv("SUPPLIER_API_KEY")
+
+# Shopify API URL
+SHOPIFY_API_URL = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2021-01"
+
+def get_supplier_products():
+    """
+    Fetch products from the supplier's API.
+    """
+    url = "https://api.supplier.com/v1/products"
+    headers = {"Authorization": f"Bearer {SUPPLIER_API_KEY}"}
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+def add_product_to_shopify(product):
+    """
+    Add a product to the Shopify store.
+    """
+    url = f"{SHOPIFY_API_URL}/products.json"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": SHOPIFY_PASSWORD
+    }
+    product_data = {
+        "product": {
+            "title": product["name"],
+            "body_html": product["description"],
+            "vendor": product["vendor"],
+            "product_type": product["type"],
+            "variants": [
+                {
+                    "price": product["price"],
+                    "sku": product["sku"]
+                }
+            ],
+            "images": [{"src": img} for img in product["images"]]
+        }
+    }
+    response = requests.post(url, json=product_data, headers=headers)
+    return response.json()
+
+def main():
+    supplier_products = get_supplier_products()
+    for product in supplier_products:
+        result = add_product_to_shopify(product)
+        print(f"Added product: {result['product']['title']}")
+
+if __name__ == "__main__":
+    main()
