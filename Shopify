@@ -1,0 +1,75 @@
+git clone https://github.com/your-username/EcoCase.git
+cd EcoCase
+touch automate_shopify.py
+import shopify
+import requests
+import os
+
+# Shopify API Credentials
+SHOPIFY_API_KEY = os.getenv("SHOPIFY_API_KEY")
+SHOPIFY_PASSWORD = os.getenv("SHOPIFY_PASSWORD")
+SHOP_NAME = "ecocase"
+
+# Spocket API Key
+SPOCKET_API_KEY = os.getenv("SPOCKET_API_KEY")
+
+# Connect to Shopify
+shop_url = f"https://{SHOPIFY_API_KEY}:{SHOPIFY_PASSWORD}@{SHOP_NAME}.myshopify.com/admin"
+shopify.ShopifyResource.set_site(shop_url)
+
+# Function to Fetch Products from Spocket
+def get_spocket_products():
+    url = "https://api.spocket.co/v1/products"
+    headers = {"Authorization": f"Bearer {SPOCKET_API_KEY}"}
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+# Function to Add Product to Shopify
+def add_product_to_shopify(product):
+    new_product = shopify.Product()
+    new_product.title = product["name"]
+    new_product.body_html = product["description"]
+    new_product.variants = [{"price": product["retail_price"], "sku": product["sku"]}]
+    new_product.images = [{"src": product["image"]}]
+    new_product.save()
+
+# Import Products from Spocket to Shopify
+spocket_products = get_spocket_products()
+for product in spocket_products[:5]:  # Import first 5 products
+    add_product_to_shopify(product)
+
+print("Eco-friendly products added to Shopify store!")
+mkdir .github/workflows
+touch .github/workflows/deploy.yml
+name: Auto Add Shopify Products
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install shopify requests
+
+      - name: Run Shopify automation script
+        env:
+          SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
+          SHOPIFY_PASSWORD: ${{ secrets.SHOPIFY_PASSWORD }}
+          SPOCKET_API_KEY: ${{ secrets.SPOCKET_API_KEY }}
+        run: python automate_shopify.py
+git add .
+git commit -m "Added Shopify automation script"
+git push origin main
